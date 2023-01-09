@@ -1,10 +1,10 @@
 #!/bin/bash -eu
 
-assert () {
+assert() {
     expected="$1"
     input="$2"
 
-    ./9cc "$input" > tmp.s
+    ./9cc "$input" >tmp.s
     set +e
     cc -o tmp tmp.s
     ./tmp
@@ -48,6 +48,5 @@ assert 0 '1>2'
 assert 1 '1>=0'
 assert 1 '1>=1'
 assert 0 '1>=2'
-
 
 echo OK
