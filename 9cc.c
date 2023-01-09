@@ -16,7 +16,7 @@ typedef struct Token Token;
 struct Token {
     TokenKind kind;  // トークンの型
     Token *next;     // 次の入力トーケン
-    int64_t val;     // kindがTK_NUMの場合、その数値
+    int32_t val;     // kindがTK_NUMの場合、その数値
     char *str;       // トークン文字列
 };
 
@@ -34,7 +34,7 @@ struct Node {
     NodeKind kind;  // ノードの型
     Node *lhs;      // 左辺
     Node *rhs;      // 右辺
-    int64_t val;    // kindがND_NUMの場合のみ使う
+    int32_t val;    // kindがND_NUMの場合のみ使う
 };
 
 // 現在着目しているトークン
@@ -89,12 +89,12 @@ void expect(char op) {
 
 // 次のトークンが数値の場合、トークンを1つ読み進めてその数値を返す。
 // それ以外の場合にはエラーを報告する。
-int64_t expect_number() {
+int32_t expect_number() {
     if (token->kind != TK_NUM) {
         error_at(token->str, "数ではありません");
     }
 
-    int64_t val = token->val;
+    int32_t val = token->val;
     token = token->next;
     return val;
 }
@@ -150,7 +150,7 @@ Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
     return node;
 }
 
-Node *new_node_num(int64_t val) {
+Node *new_node_num(int32_t val) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_NUM;
     node->val = val;
