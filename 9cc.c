@@ -34,7 +34,7 @@ struct Node {
     NodeKind kind;  // ノードの型
     Node *lhs;      // 左辺
     Node *rhs;      // 右辺
-    int val;        // kindがND_NUMの場合のみ使う
+    int64_t val;    // kindがND_NUMの場合のみ使う
 };
 
 // 現在着目しているトークン
@@ -150,7 +150,7 @@ Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
     return node;
 }
 
-Node *new_node_num(int val) {
+Node *new_node_num(int64_t val) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_NUM;
     node->val = val;
@@ -211,7 +211,7 @@ Node *primary(void) {
 
 void gen(Node *node) {
     if (node->kind == ND_NUM) {
-        printf("  push %d\n", node->val);
+        printf("  push %ld\n", node->val);
         return;
     }
 
