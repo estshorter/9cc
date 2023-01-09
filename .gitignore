@@ -61,6 +61,19 @@ dkms.conf
 
 # End of https://www.toptal.com/developers/gitignore/api/c,ninja
 
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+
+# Local History for Visual Studio Code
+.history/
+
+# Built Visual Studio Code Extensions
+*.vsix
+
 *.s
 tmp
 9cc
