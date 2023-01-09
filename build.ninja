@@ -2,7 +2,8 @@ cc = cc
 cflags = -std=c11 -g -static -Wall -Wextra
 
 rule build
-     command = $cc $cflags -c $out $in
+     depfile = $out.d
+     command = $cc -MMD -MF $out.d $cflags -c $out $in
 
 rule link
      command = $cc $cflags -o $out $in
