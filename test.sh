@@ -4,7 +4,7 @@ assert() {
     expected="$1"
     input="$2"
 
-    ./9cc "$input" >tmp.s
+    ./build/9cc "$input" >tmp.s
     set +e
     cc -o tmp tmp.s
     ./tmp
