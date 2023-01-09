@@ -1,0 +1,7 @@
+cc = cc
+cflags = -std=c11 -g -static
+
+rule cc
+     command = $cc $cflags -o $out $in
+
+build 9cc: cc 9cc.c
