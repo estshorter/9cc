@@ -1,5 +1,17 @@
 {
+    "version": "2.0.0",
     "tasks": [
+        {
+            "type": "cmake",
+            "label": "CMake: build",
+            "command": "build",
+            "targets": [
+                "all"
+            ],
+            "group": "build",
+            "problemMatcher": [],
+            "detail": "CMake template build task"
+        },
         {
             "type": "cppbuild",
             "label": "C/C++: gcc アクティブなファイルのビルド",
@@ -23,6 +35,5 @@
             },
             "detail": "デバッガーによって生成されたタスク。"
         }
-    ],
-    "version": "2.0.0"
+    ]
 }
