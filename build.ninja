@@ -1,12 +1,12 @@
-cc = cc
-cflags = -std=c11 -g -static -Wall -Wextra
-
+cc = gcc
+cflags = -std=c11 -g -Wall -Wextra
+lflags = -static
 rule build
      depfile = $out.d
-     command = $cc -MMD -MF $out.d $cflags -c $out $in
+     command = $cc -MMD -MF $out.d $cflags -c $in -o $out
 
 rule link
-     command = $cc $cflags -o $out $in
+     command = $cc $cflags $lflags -o $out $in
 
 build codegen.o: build codegen.c
 build parse.o: build parse.c
