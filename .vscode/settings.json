@@ -8,7 +8,7 @@
     },
     "cmake.debugConfig": {
         "args": [
-            "_foo1=3; _foo1;"
+            "_foo1=3; return _foo1;"
         ],
     }
 }

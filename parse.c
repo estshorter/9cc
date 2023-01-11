@@ -34,6 +34,14 @@ bool consume(const char *op) {
     return true;
 }
 
+bool consume_kind(const TokenKind kind) {
+    if (token->kind != kind) {
+        return false;
+    }
+    token = token->next;
+    return true;
+}
+
 Token *consume_ident() {
     if (token->kind != TK_IDENT) {
         return NULL;
@@ -82,6 +90,8 @@ bool is_ident1(const char c) { return ('a' <= c && c <= 'z') || ('A' <= c && c <
 
 bool is_ident2(const char c) { return is_ident1(c) || ('0' <= c && c <= '9'); }
 
+bool is_alnum(const char c) { return is_ident2(c); }
+
 // 入力文字列pをトークナイズしてそれを返す
 Token *tokenize(char *p) {
     Token head;
@@ -103,6 +113,12 @@ Token *tokenize(char *p) {
 
         if (strchr("+-*/()<>;=", *p)) {
             cur = new_token(TK_RESERVED, cur, p++, 1);
+            continue;
+        }
+
+        if (strncmp(p, "return", 6) == 0 && !isalnum(p[6])) {
+            cur = new_token(TK_RETURN, cur, p, 6);
+            p += 6;
             continue;
         }
 
@@ -180,7 +196,13 @@ void program(void) {
 }
 
 Node *stmt(void) {
-    Node *node = expr();
+    Node *node = NULL;
+
+    if (consume_kind(TK_RETURN)) {
+        node = new_binary(ND_RETURN, expr(), NULL);
+    } else {
+        node = expr();
+    }
     expect(";");
     return node;
 }
