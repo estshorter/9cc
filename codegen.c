@@ -32,6 +32,9 @@ void gen_lval(const Node *node) {
 }
 
 void gen(const Node *node) {
+    if (node == NULL) {
+        error("node is NULL");
+    }
     switch (node->kind) {
         case ND_NUM:
             printf("  push %d\n", node->val);
