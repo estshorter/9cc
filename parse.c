@@ -7,8 +7,11 @@
 
 #include "9cc.h"
 
+// ローカル変数
+LVar *locals;
+
 // エラー箇所を報告する
-void error_at(char *loc, char *fmt, ...) {
+void error_at(const char *loc, const char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
 
@@ -23,8 +26,8 @@ void error_at(char *loc, char *fmt, ...) {
 
 // 次のトークンが期待している記号のときには、トークンを1つ読み進めて
 // 真を返す。それ以外の場合には偽を返す。
-bool consume(char *op) {
-    if (token->kind != TK_RESERVED || strlen(op) != token->len || memcmp(token->str, op, token->len)) {
+bool consume(const char *op) {
+    if (token->kind != TK_RESERVED || strlen(op) != (size_t)token->len || memcmp(token->str, op, token->len)) {
         return false;
     }
     token = token->next;
@@ -32,7 +35,7 @@ bool consume(char *op) {
 }
 
 Token *consume_ident() {
-    if (token->kind != TK_IDENT || !('a' <= *token->str && *token->str <= 'z') || token->len != 1) {
+    if (token->kind != TK_IDENT) {
         return NULL;
     }
     Token *token_old = token;
@@ -42,8 +45,8 @@ Token *consume_ident() {
 
 // 次のトークンが期待している記号のときには、トークンを1つ読み進める。
 // それ以外の場合にはエラーを報告する。
-void expect(char *op) {
-    if (token->kind != TK_RESERVED || strlen(op) != token->len || memcmp(token->str, op, token->len)) {
+void expect(const char *op) {
+    if (token->kind != TK_RESERVED || strlen(op) != (size_t)token->len || memcmp(token->str, op, token->len)) {
         error_at(token->str, "'%s'ではありません", op);
     }
     token = token->next;
@@ -64,7 +67,7 @@ int32_t expect_number() {
 bool at_eof() { return token->kind == TK_EOF; }
 
 // 新しいトークンを作成してcurに繋げる
-Token *new_token(TokenKind kind, Token *cur, char *str, int32_t len) {
+Token *new_token(const TokenKind kind, Token *cur, char *str, const int32_t len) {
     Token *tok = calloc(1, sizeof(Token));
     tok->kind = kind;
     tok->str = str;
@@ -74,6 +77,10 @@ Token *new_token(TokenKind kind, Token *cur, char *str, int32_t len) {
 }
 
 bool startswith(const char *s1, const char *s2) { return strncmp(s1, s2, strlen(s2)) == 0; }
+
+bool is_ident1(const char c) { return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || c == '_'; }
+
+bool is_ident2(const char c) { return is_ident1(c) || ('0' <= c && c <= '9'); }
 
 // 入力文字列pをトークナイズしてそれを返す
 Token *tokenize(char *p) {
@@ -99,17 +106,20 @@ Token *tokenize(char *p) {
             continue;
         }
 
-        if ('a' <= *p && *p <= 'z') {
-            cur = new_token(TK_IDENT, cur, p++, 1);
-            cur->len = 1;
+        if (is_ident1(*p)) {
+            char *start = p;
+            do {
+                p++;
+            } while (is_ident2(*p));
+            cur = new_token(TK_IDENT, cur, start, p - start);
             continue;
         }
 
         if (isdigit(*p)) {
             cur = new_token(TK_NUM, cur, p, 0);
-            char *p_tmp = p;
+            char *start = p;
             cur->val = strtol(p, &p, 10);
-            cur->len = p - p_tmp;
+            cur->len = p - start;
             continue;
         }
 
@@ -119,20 +129,30 @@ Token *tokenize(char *p) {
     return head.next;
 }
 
-Node *new_node(NodeKind kind) {
+// 変数を名前で検索する。見つからなかった場合はNULLを返す。
+LVar *find_lvar(const Token *tok) {
+    for (LVar *var = locals; var; var = var->next) {
+        if (var->len == tok->len && !strncmp(tok->str, var->name, var->len)) {
+            return var;
+        }
+    }
+    return NULL;
+}
+
+Node *new_node(const NodeKind kind) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = kind;
     return node;
 }
 
-Node *new_binary(NodeKind kind, Node *lhs, Node *rhs) {
+Node *new_binary(const NodeKind kind, Node *lhs, Node *rhs) {
     Node *node = new_node(kind);
     node->lhs = lhs;
     node->rhs = rhs;
     return node;
 }
 
-Node *new_num(int32_t val) {
+Node *new_num(const int32_t val) {
     Node *node = new_node(ND_NUM);
     node->val = val;
     return node;
@@ -263,7 +283,17 @@ Node *primary(void) {
     if (tok) {
         Node *node = calloc(1, sizeof(Node));
         node->kind = ND_LVAR;
-        node->offset = (tok->str[0] - 'a' + 1) * 8;
+
+        LVar *lvar = find_lvar(tok);
+        if (!lvar) {
+            lvar = calloc(1, sizeof(LVar));
+            lvar->next = locals;
+            lvar->name = tok->str;
+            lvar->len = tok->len;
+            lvar->offset = locals ? locals->offset + 8 : 8;
+            locals = lvar;
+        }
+        node->offset = lvar->offset;
         return node;
     }
 

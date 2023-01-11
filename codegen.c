@@ -13,7 +13,7 @@ char *user_input;
 
 // エラーを報告するための関数
 // printfと同じ引数を取る
-void error(char *fmt, ...) {
+void error(const char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
     vfprintf(stderr, fmt, ap);
@@ -21,7 +21,7 @@ void error(char *fmt, ...) {
     exit(1);
 }
 
-void gen_lval(Node *node) {
+void gen_lval(const Node *node) {
     if (node->kind != ND_LVAR) {
         error("代入の左辺値が変数ではありません");
     }
@@ -31,7 +31,7 @@ void gen_lval(Node *node) {
     printf("  push rax\n");
 }
 
-void gen(Node *node) {
+void gen(const Node *node) {
     switch (node->kind) {
         case ND_NUM:
             printf("  push %d\n", node->val);
@@ -53,7 +53,7 @@ void gen(Node *node) {
             return;
         default:
             // error("wrong type: %d, @ %s (%d)", node->kind, __FILE__, __LINE__);
-        }
+    }
 
     gen(node->lhs);
     gen(node->rhs);

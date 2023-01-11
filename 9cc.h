@@ -16,7 +16,7 @@ struct Token {
     Token *next;     // 次の入力トーケン
     int32_t val;     // kindがTK_NUMの場合、その数値
     char *str;       // トークン文字列
-    size_t len;      // トークン長
+    int64_t len;     // トークン長
 };
 
 typedef enum {
@@ -45,7 +45,17 @@ struct Node {
 
 Token *tokenize(char *p);
 void program(void);
-void gen(Node *node);
+void gen(const Node *node);
+
+typedef struct LVar LVar;
+
+// ローカル変数の型
+struct LVar {
+    LVar *next;      // 次の変数かNULL
+    char *name;      // 変数の名前
+    int64_t len;     // 名前の長さ
+    int32_t offset;  // RBPからのオフセット
+};
 
 // 現在着目しているトークン
 extern Token *token;
