@@ -11,6 +11,11 @@ Token *token;
 // 入力プログラム
 char *user_input;
 
+int count(void) {
+    static int i = 1;
+    return i++;
+}
+
 // エラーを報告するための関数
 // printfと同じ引数を取る
 void error(const char *fmt, ...) {
@@ -61,6 +66,25 @@ void gen(const Node *node) {
             printf("  pop rbp\n");
             printf("  ret\n");
             return;
+        case ND_IF:
+            int c = count();
+            gen(node->cond);
+            printf("  pop rax\n");
+            printf("  cmp rax, 0\n");
+            if (node->els) {
+                printf("  je  .Lelse%d\n", c);
+                gen(node->then);
+                printf("  je  .Lend%d\n", c);
+                printf(".Lelse%d:\n", c);
+                gen(node->els);
+                printf(".Lend%d:\n", c);
+            } else {
+                printf("  je  .Lend%d\n", c);
+                gen(node->then);
+                printf(".Lend%d:\n", c);
+            }
+            return;
+
         default:
             // error("wrong type: %d, @ %s (%d)", node->kind, __FILE__, __LINE__);
     }

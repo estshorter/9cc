@@ -24,14 +24,21 @@ void error_at(const char *loc, const char *fmt, ...) {
     exit(1);
 }
 
-// 次のトークンが期待している記号のときには、トークンを1つ読み進めて
-// 真を返す。それ以外の場合には偽を返す。
-bool consume(const char *op) {
+bool peek(const char *op) {
     if (token->kind != TK_RESERVED || strlen(op) != (size_t)token->len || memcmp(token->str, op, token->len)) {
         return false;
     }
-    token = token->next;
     return true;
+}
+
+// 次のトークンが期待している記号のときには、トークンを1つ読み進めて
+// 真を返す。それ以外の場合には偽を返す。
+bool consume(const char *op) {
+    if (peek(op)) {
+        token = token->next;
+        return true;
+    }
+    return false;
 }
 
 bool consume_kind(const TokenKind kind) {
@@ -92,6 +99,23 @@ bool is_ident2(const char c) { return is_ident1(c) || ('0' <= c && c <= '9'); }
 
 bool is_alnum(const char c) { return is_ident2(c); }
 
+// ポインタを更新したいので**pにしている
+bool consume_keyword_token(char **p, Token **cur) {
+    char keywords[][6] = {"return", "if", "else", "while", "for"};
+    TokenKind keywords_token[] = {TK_RETURN, TK_IF, TK_ELSE, TK_WHILE, TK_FOR};
+    int keywords_size[] = {6, 2, 4, 5, 3};
+    int num_keywords = sizeof(keywords_size) / sizeof(int);
+    for (int i = 0; i < num_keywords; i++) {
+        int keyword_len = keywords_size[i];
+        if (strncmp(*p, keywords[i], keyword_len) == 0 && !isalnum((*p)[keyword_len])) {
+            *cur = new_token(keywords_token[i], *cur, *p, keyword_len);
+            *p += keyword_len;
+            return true;
+        }
+    }
+    return false;
+}
+
 // 入力文字列pをトークナイズしてそれを返す
 Token *tokenize(char *p) {
     Token head;
@@ -116,9 +140,7 @@ Token *tokenize(char *p) {
             continue;
         }
 
-        if (strncmp(p, "return", 6) == 0 && !isalnum(p[6])) {
-            cur = new_token(TK_RETURN, cur, p, 6);
-            p += 6;
+        if (consume_keyword_token(&p, &cur)) {
             continue;
         }
 
@@ -200,10 +222,42 @@ Node *stmt(void) {
 
     if (consume_kind(TK_RETURN)) {
         node = new_binary(ND_RETURN, expr(), NULL);
+        expect(";");
+    } else if (consume_kind(TK_IF)) {
+        node = new_node(ND_IF);
+        expect("(");
+        node->cond = expr();
+        expect(")");
+        node->then = stmt();
+        if (consume_kind(TK_ELSE)) {
+            node->els = stmt();
+        }
+    } else if (consume_kind(TK_WHILE)) {
+        node = new_node(ND_WHILE);
+        expect("(");
+        node->cond = expr();
+        expect(")");
+        node->then = stmt();
+    } else if (consume_kind(TK_FOR)) {
+        node = new_node(ND_FOR);
+        expect("(");
+        if (!peek(";")) {
+            node->init = expr();
+        }
+        expect(";");
+        if (!peek(";")) {
+            node->cond = expr();
+        }
+        expect(";");
+        if (!peek(")")) {
+            node->inc = expr();
+        }
+        expect(")");
+        node->then = stmt();
     } else {
         node = expr();
+        expect(";");
     }
-    expect(";");
     return node;
 }
 
@@ -297,7 +351,7 @@ Node *unary(void) {
 Node *primary(void) {
     if (consume("(")) {
         Node *node = expr();
-        consume(")");
+        expect(")");
         return node;
     }
 
