@@ -66,7 +66,7 @@ void gen(const Node *node) {
             printf("  pop rbp\n");
             printf("  ret\n");
             return;
-        case ND_IF:
+        case ND_IF: {
             int c = count();
             gen(node->cond);
             printf("  pop rax\n");
@@ -84,7 +84,40 @@ void gen(const Node *node) {
                 printf(".Lend%d:\n", c);
             }
             return;
+        }
+        case ND_WHILE: {
+            int c = count();
+            printf(".Lbegin%d:\n", c);
+            gen(node->cond);
+            printf("  pop rax\n");
+            printf("  cmp rax, 0\n");
+            printf("  je  .Lend%d\n", c);
+            gen(node->then);
+            printf("  jmp .Lbegin%d\n", c);
+            printf(".Lend%d:\n", c);
+            return;
+        }
 
+        case ND_FOR: {
+            int c = count();
+            if (node->init) {
+                gen(node->init);
+            }
+            printf(".Lbegin%d:\n", c);
+            if (node->cond) {
+                gen(node->cond);
+                printf("  pop rax\n");
+                printf("  cmp rax, 0\n");
+                printf("  je  .Lend%d\n", c);
+            }
+            gen(node->then);
+            if (node->inc) {
+                gen(node->inc);
+            }
+            printf("  jmp .Lbegin%d\n", c);
+            printf(".Lend%d:\n", c);
+            return;
+        }
         default:
             // error("wrong type: %d, @ %s (%d)", node->kind, __FILE__, __LINE__);
     }
