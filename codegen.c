@@ -30,11 +30,11 @@ void gen_lval(const Node *node) {
     if (node->kind != ND_LVAR) {
         error("代入の左辺値が変数ではありません");
     }
-    printf("# left val {\n");
+    printf("# left val %d{\n", node->offset / 8);
     printf("  mov rax, rbp\n");
     printf("  sub rax, %" PRId32 "\n", node->offset);
     printf("  push rax\n");
-    printf("# } left val\n");
+    printf("# } left val %d\n", node->offset / 8);
 }
 
 void gen(const Node *node) {
@@ -75,21 +75,32 @@ void gen(const Node *node) {
             return;
         case ND_IF: {
             int c = count();
+            printf("# if {\n");
+            printf("#   cond {\n");
             gen(node->cond);
+            printf("#   } cond\n");
             printf("  pop rax\n");
             printf("  cmp rax, 0\n");
             if (node->els) {
                 printf("  je  .Lelse%d\n", c);
+                printf("#   then {\n");
                 gen(node->then);
+                printf("#   } then\n");
+
                 printf("  je  .Lend%d\n", c);
                 printf(".Lelse%d:\n", c);
+                printf("#   { else\n");
                 gen(node->els);
+                printf("#  n } else\n");
                 printf(".Lend%d:\n", c);
             } else {
                 printf("  je  .Lend%d\n", c);
+                printf("#   then {\n");
                 gen(node->then);
+                printf("#   } then\n");
                 printf(".Lend%d:\n", c);
             }
+            printf("# } if\n");
             return;
         }
         case ND_WHILE: {
@@ -149,37 +160,45 @@ void gen(const Node *node) {
 
     switch (node->kind) {
         case ND_ADD:
-            printf("  add rax, rdi # +\n");
+            printf("  add rax, rdi\n");
             break;
         case ND_SUB:
-            printf("  sub rax, rdi # -\n");
+            printf("  sub rax, rdi\n");
             break;
         case ND_MUL:
-            printf("  imul rax, rdi # *\n");
+            printf("  imul rax, rdi\n");
             break;
         case ND_DIV:
             printf("  cqo\n");
             printf("  idiv rdi\n");
             break;
         case ND_EQ:
+            printf("# == {\n");
             printf("  cmp rax, rdi\n");
             printf("  sete al\n");
             printf("  movzb rax, al\n");
+            printf("# } ==\n");
             break;
         case ND_NE:
+            printf("# != {\n");
             printf("  cmp rax, rdi\n");
             printf("  setne al\n");
             printf("  movzb rax, al\n");
+            printf("# != }\n");
             break;
         case ND_LT:
+            printf("# < {\n");
             printf("  cmp rax, rdi\n");
             printf("  setl al\n");
             printf("  movzb rax, al\n");
+            printf("# } <\n");
             break;
         case ND_LE:
+            printf("# <= {\n");
             printf("  cmp rax, rdi\n");
             printf("  setle al\n");
             printf("  movzb rax, al\n");
+            printf("# <= {\n");
             break;
         default:
             error("cannot be reached : %s (%d)", __FILE__, __LINE__);
