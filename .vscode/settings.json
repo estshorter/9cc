@@ -8,7 +8,7 @@
     },
     "cmake.debugConfig": {
         "args": [
-            "for (;;) return 3; return 5;"
+            "{ ;;; return 5; }"
         ],
     }
 }

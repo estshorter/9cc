@@ -41,6 +41,7 @@ typedef enum {
     ND_ELSE,
     ND_WHILE,
     ND_FOR,
+    ND_BLOCK,
 } NodeKind;
 
 typedef struct Node Node;
@@ -60,6 +61,10 @@ struct Node {
     // for
     Node *init;
     Node *inc;
+
+    // Block
+    Node *body;
+    Node *next;
 };
 
 Token *tokenize(char *p);
@@ -75,6 +80,8 @@ struct LVar {
     int64_t len;     // 名前の長さ
     int32_t offset;  // RBPからのオフセット
 };
+
+int32_t get_stacksize(void);
 
 // 現在着目しているトークン
 extern Token *token;

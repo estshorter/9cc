@@ -30,10 +30,11 @@ void gen_lval(const Node *node) {
     if (node->kind != ND_LVAR) {
         error("代入の左辺値が変数ではありません");
     }
-
+    printf("# left val {\n");
     printf("  mov rax, rbp\n");
     printf("  sub rax, %" PRId32 "\n", node->offset);
     printf("  push rax\n");
+    printf("# } left val\n");
 }
 
 void gen(const Node *node) {
@@ -45,12 +46,15 @@ void gen(const Node *node) {
             printf("  push %d\n", node->val);
             return;
         case ND_LVAR:
+            printf("# local var {\n");
             gen_lval(node);
             printf("  pop rax\n");
             printf("  mov rax, [rax]\n");
             printf("  push rax\n");
+            printf("# } local var\n");
             return;
         case ND_ASSIGN:
+            printf("# assign {\n");
             gen_lval(node->lhs);
             gen(node->rhs);
 
@@ -58,13 +62,16 @@ void gen(const Node *node) {
             printf("  pop rax\n");
             printf("  mov [rax], rdi\n");
             printf("  push rdi\n");
+            printf("# } assign\n");
             return;
         case ND_RETURN:
+            printf("# return {\n");
             gen(node->lhs);
             printf("  pop rax\n");
             printf("  mov rsp, rbp\n");
             printf("  pop rbp\n");
             printf("  ret\n");
+            printf("# } return\n");
             return;
         case ND_IF: {
             int c = count();
@@ -87,6 +94,7 @@ void gen(const Node *node) {
         }
         case ND_WHILE: {
             int c = count();
+            printf("# while {\n");
             printf(".Lbegin%d:\n", c);
             gen(node->cond);
             printf("  pop rax\n");
@@ -95,9 +103,9 @@ void gen(const Node *node) {
             gen(node->then);
             printf("  jmp .Lbegin%d\n", c);
             printf(".Lend%d:\n", c);
+            printf("# } while\n");
             return;
         }
-
         case ND_FOR: {
             int c = count();
             if (node->init) {
@@ -118,6 +126,17 @@ void gen(const Node *node) {
             printf(".Lend%d:\n", c);
             return;
         }
+        case ND_BLOCK: {
+            printf("# block {\n");
+            for (Node *n = node->body; n; n = n->next) {
+                gen(n);
+                if (n->kind != ND_WHILE && n->kind != ND_FOR && n->kind != ND_IF && n->kind != ND_BLOCK) {
+                    printf("  pop rax # pop unnecessary item\n");
+                }
+            }
+            printf("# } block\n");
+            return;
+        }
         default:
             // error("wrong type: %d, @ %s (%d)", node->kind, __FILE__, __LINE__);
     }
@@ -130,13 +149,13 @@ void gen(const Node *node) {
 
     switch (node->kind) {
         case ND_ADD:
-            printf("  add rax, rdi\n");
+            printf("  add rax, rdi # +\n");
             break;
         case ND_SUB:
-            printf("  sub rax, rdi\n");
+            printf("  sub rax, rdi # -\n");
             break;
         case ND_MUL:
-            printf("  imul rax, rdi\n");
+            printf("  imul rax, rdi # *\n");
             break;
         case ND_DIV:
             printf("  cqo\n");

@@ -135,7 +135,7 @@ Token *tokenize(char *p) {
             continue;
         }
 
-        if (strchr("+-*/()<>;=", *p)) {
+        if (strchr("+-*/()<>;={}", *p)) {
             cur = new_token(TK_RESERVED, cur, p++, 1);
             continue;
         }
@@ -254,6 +254,17 @@ Node *stmt(void) {
         }
         expect(")");
         node->then = stmt();
+    } else if (consume("{")) {
+        Node head = {};
+        Node *cur = &head;
+        while (!peek("}") && cur) {
+            cur = cur->next = stmt();
+        }
+        expect("}");
+        node = new_node(ND_BLOCK);
+        node->body = head.next;
+    } else if (consume(";")) {
+        return new_node(ND_BLOCK);  // おそらくなんでもよいはず
     } else {
         node = expr();
         expect(";");
@@ -374,4 +385,11 @@ Node *primary(void) {
     }
 
     return new_num(expect_number());
+}
+
+int32_t get_stacksize(void) {
+    if (!locals) {
+        return 0;
+    }
+    return locals->offset;
 }
