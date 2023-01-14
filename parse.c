@@ -87,6 +87,15 @@ int32_t expect_number() {
     return val;
 }
 
+char *get_ident_name() {
+    Token *maybe_ident = s_token;
+    Token *t = consume_ident();
+    if (t) {
+        return strndup(maybe_ident->str, maybe_ident->len);
+    }
+    return NULL;
+}
+
 bool at_eof() { return s_token->kind == TK_EOF; }
 
 // 新しいトークンを作成してcurに繋げる
@@ -204,7 +213,11 @@ Node *new_num(const int32_t val) {
     return node;
 }
 
-void program(Node **code);
+Function *program(void);
+Function *function(void);
+char *declarator(void);
+void type_suffix(void);
+Node *compound_stmt(void);
 Node *stmt(void);
 Node *expr(void);
 Node *assign(void);
@@ -215,12 +228,56 @@ Node *mul(void);
 Node *unary(void);
 Node *primary(void);
 
-void program(Node **code) {
-    int i = 0;
+// program = function-definition*
+Function *program() {
+    Function head = {};
+    Function *cur = &head;
     while (!at_eof()) {
-        code[i++] = stmt();
+        cur = cur->next = function();
     }
-    code[i] = NULL;
+    return head.next;
+}
+
+// functon-definition = declarator "{" compound-stmt
+Function *function(void) {
+    locals = NULL;
+    Function *fn = calloc(1, sizeof(Function));
+    fn->name = declarator();
+    expect("{");
+    fn->body = compound_stmt();
+    fn->locals = locals;
+
+    return fn;
+}
+
+// declarator = ident type-suffix
+char *declarator() {
+    char *ident = get_ident_name();
+    if (!ident) {
+        error_at(s_token->str, "識別子ではありません");
+    }
+    type_suffix();
+    return ident;
+}
+
+// type-suffix = ("(" func-params)? ")"
+void type_suffix() {
+    expect("(");
+    expect(")");
+}
+
+// compound-stmt = stmt* "}"
+Node *compound_stmt() {
+    Node *node = new_node(ND_BLOCK);
+
+    Node head = {};
+    Node *cur = &head;
+    while (!peek("}") && cur) {
+        cur = cur->next = stmt();
+    }
+    expect("}");
+    node->body = head.next;
+    return node;
 }
 
 Node *stmt(void) {
@@ -261,14 +318,7 @@ Node *stmt(void) {
         expect(")");
         node->then = stmt();
     } else if (consume("{")) {
-        Node head = {};
-        Node *cur = &head;
-        while (!peek("}") && cur) {
-            cur = cur->next = stmt();
-        }
-        expect("}");
-        node = new_node(ND_BLOCK);
-        node->body = head.next;
+        node = compound_stmt();
     } else if (consume(";")) {
         return new_node(ND_BLOCK);  // おそらくなんでもよいはず
     } else {
@@ -418,7 +468,7 @@ int32_t get_stacksize(void) {
     return locals->offset;
 }
 
-void parse(Token *token_in, Node **code) {
+Function *parse(Token *token_in) {
     s_token = token_in;
-    program(code);
+    return program();
 }

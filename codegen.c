@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <inttypes.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -6,6 +7,19 @@
 #include "9cc.h"
 
 static char *argreg[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+
+static int s_depth;
+static Function *s_current_fn;
+
+static void push(void) {
+    s_depth++;
+    printf("  push rax # size: %d\n", s_depth);
+}
+
+static void pop(char *arg) {
+    s_depth--;
+    printf("  pop %s # size: %d\n", arg, s_depth);
+}
 
 int count(void) {
     static int i = 1;
@@ -26,11 +40,10 @@ void gen_lval(const Node *node) {
     if (node->kind != ND_LVAR) {
         error("代入の左辺値が変数ではありません");
     }
-    printf("# left val %d{\n", node->offset / 8);
+    printf("# left val %s{\n", node->symbolname);
     printf("  mov rax, rbp\n");
     printf("  sub rax, %" PRId32 "\n", node->offset);
-    printf("  push rax\n");
-    printf("# } left val %d\n", node->offset / 8);
+    printf("# } left val %s\n", node->symbolname);
 }
 
 void gen(const Node *node) {
@@ -39,54 +52,49 @@ void gen(const Node *node) {
     }
     switch (node->kind) {
         case ND_NUM:
-            printf("  push %d\n", node->val);
+            printf("  mov rax, %d\n", node->val);
             return;
         case ND_LVAR:
             printf("# local var %s {\n", node->symbolname);
             gen_lval(node);
-            printf("  pop rax\n");
             printf("  mov rax, [rax]\n");
-            printf("  push rax\n");
             printf("# } local var %s\n", node->symbolname);
             return;
         case ND_FUNCALL:
             printf("# func %s {\n", node->symbolname);
-            int argnum = 0;
+            int nargs = 0;
             printf("#   args %s {\n", node->symbolname);
             for (Node *n = node->args; n; n = n->next) {
-                printf("#   gen arg id %d {\n", argnum + 1);
+                printf("#   gen arg id %d {\n", nargs + 1);
                 gen(n);
-                argnum++;
-                printf("#   } gen arg id %d\n", argnum + 1);
+                push();
+                nargs++;
+                printf("#   } gen arg id %d\n", nargs + 1);
             }
-            for (int i = argnum - 1; i >= 0; i--) {
+            for (int i = nargs - 1; i >= 0; i--) {
                 printf("#   push arg id %d {\n", i + 1);
-                printf("  pop %s\n", argreg[i]);
+                pop(argreg[i]);
                 printf("#   } push arg id %d\n", i + 1);
             }
 
             printf("#   } args %s\n", node->symbolname);
             printf("  mov rax, 0\n");
             printf("  call %s\n", node->symbolname);
-            printf("  push rax\n");
             printf("# } func %s\n", node->symbolname);
             return;
         case ND_ASSIGN:
             printf("# assign {\n");
             gen_lval(node->lhs);
+            push();
             gen(node->rhs);
-
-            printf("  pop rdi\n");
-            printf("  pop rax\n");
-            printf("  mov [rax], rdi\n");
-            printf("  push rdi\n");
+            pop("rdi");
+            printf("  mov [rdi], rax\n");
             printf("# } assign\n");
             return;
         case ND_RETURN:
             printf("# return {\n");
             gen(node->lhs);
-            printf("  pop rax\n");
-            printf("  jmp .L.return\n");
+            printf("  jmp .L.return.%s\n", s_current_fn->name);
             printf("# } return\n");
             return;
         case ND_IF: {
@@ -95,7 +103,6 @@ void gen(const Node *node) {
             printf("#   cond {\n");
             gen(node->cond);
             printf("#   } cond\n");
-            printf("  pop rax\n");
             printf("  cmp rax, 0\n");
             if (node->els) {
                 printf("  je  .Lelse%d\n", c);
@@ -124,7 +131,6 @@ void gen(const Node *node) {
             printf("# while {\n");
             printf(".Lbegin%d:\n", c);
             gen(node->cond);
-            printf("  pop rax\n");
             printf("  cmp rax, 0\n");
             printf("  je  .Lend%d\n", c);
             gen(node->then);
@@ -135,32 +141,37 @@ void gen(const Node *node) {
         }
         case ND_FOR: {
             int c = count();
+            printf("# for {\n");
             if (node->init) {
+                printf("#   init {\n");
                 gen(node->init);
+                printf("#   } init\n");
             }
             printf(".Lbegin%d:\n", c);
             if (node->cond) {
+                printf("#   cond {\n");
                 gen(node->cond);
-                printf("  pop rax\n");
                 printf("  cmp rax, 0\n");
                 printf("  je  .Lend%d\n", c);
+                printf("#   } cond\n");
             }
+            printf("#   then {\n");
             gen(node->then);
+            printf("#   } then\n");
             if (node->inc) {
+                printf("#   inc {\n");
                 gen(node->inc);
+                printf("#   } inc\n");
             }
             printf("  jmp .Lbegin%d\n", c);
             printf(".Lend%d:\n", c);
+            printf("# } for\n");
             return;
         }
         case ND_BLOCK: {
             printf("# block {\n");
             for (Node *n = node->body; n; n = n->next) {
                 gen(n);
-                if (n->kind != ND_WHILE && n->kind != ND_FOR && n->kind != ND_IF && n->kind != ND_BLOCK &&
-                    n->kind != ND_FUNCALL) {
-                    printf("  pop rax # pop unnecessary item\n");
-                }
             }
             printf("# } block\n");
             return;
@@ -170,10 +181,10 @@ void gen(const Node *node) {
     }
 
     gen(node->lhs);
+    push();
     gen(node->rhs);
-
-    printf("  pop rdi\n");
-    printf("  pop rax\n");
+    printf("  mov rdi, rax\n");
+    pop("rax");
 
     switch (node->kind) {
         case ND_ADD:
@@ -220,12 +231,53 @@ void gen(const Node *node) {
         default:
             error("cannot be reached : %s (%d)", __FILE__, __LINE__);
     }
-
-    printf("  push rax\n");
+    return;
 }
 
-void generate_code(const Node **code) {
-    for (int i = 0; code[i]; i++) {
-        gen(code[i]);
+// Round up `n` to the nearest multiple of `align`. For instance,
+// align_to(5, 8) returns 8 and align_to(11, 8) returns 16.
+static int align_to(int n, int align) { return (n + align - 1) / align * align; }
+
+void assign_lvar_offsets(Function *prog) {
+    for (Function *fn = prog; fn; fn = fn->next) {
+        fn->stack_size = fn->locals ? align_to(fn->locals->offset, 16) : 0;
+    }
+}
+
+void generate_code(Function *fns) {
+    assign_lvar_offsets(fns);
+
+    // アセンブリの前半部分を出力
+    printf(".intel_syntax noprefix\n");
+    for (Function *fn = fns; fn; fn = fn->next) {
+        printf(".global %s\n", fn->name);
+        printf("%s:\n", fn->name);
+
+        // プロローグ
+        printf("# prologue {\n");
+        printf("  push rbp\n");
+        printf("  mov rbp, rsp\n");
+        printf("  sub rsp, %ld # num_lvar: %ld\n", fn->stack_size, fn->stack_size / 8);
+        printf("# } prologue\n");
+
+        s_current_fn = fn;
+        for (Node *n = fn->body; n; n = n->next) {
+            gen(n);
+        }
+
+        // エピローグ
+        // 最後の式の結果がRAXに残っているのでそれが返り値になる
+        printf("# epilogue {\n");
+        printf(".L.return.%s:\n", fn->name);
+        printf("  mov rsp, rbp\n");
+        printf("  pop rbp\n");
+        printf("  ret\n");
+        printf("# } epilogue\n");
+
+        if (s_depth != 0) {
+            fprintf(stderr, "stack depth: got: %d, want: 0\n", s_depth);
+            fflush(stdout);
+            assert(s_depth == 0);
+        }
     }
 }

@@ -70,11 +70,6 @@ struct Node {
     char *symbolname;
     Node *args;
 };
-
-Token *tokenize(char *p);
-void parse(Token *token_in, Node **code);
-void generate_code(const Node **code);
-
 typedef struct LVar LVar;
 
 // ローカル変数の型
@@ -97,5 +92,8 @@ struct Function {
 
 int32_t get_stacksize(void);
 void set_user_input(char *input);
+Token *tokenize(char *p);
+Function *parse(Token *token_in);
+void generate_code(Function *Function);
 
 #endif
