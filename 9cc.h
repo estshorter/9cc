@@ -68,6 +68,7 @@ struct Node {
     Node *next;
 
     char *symbolname;
+    Node *args;
 };
 
 Token *tokenize(char *p);

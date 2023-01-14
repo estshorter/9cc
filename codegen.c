@@ -11,6 +11,8 @@ Token *token;
 // 入力プログラム
 char *user_input;
 
+static char *argreg[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+
 int count(void) {
     static int i = 1;
     return i++;
@@ -54,11 +56,26 @@ void gen(const Node *node) {
             printf("# } local var %s\n", node->symbolname);
             return;
         case ND_FUNCALL:
-            printf("# local func %s {\n", node->symbolname);
+            printf("# func %s {\n", node->symbolname);
+            int argnum = 0;
+            printf("#   args %s {\n", node->symbolname);
+            for (Node *n = node->args; n; n = n->next) {
+                printf("#   gen arg id %d {\n", argnum + 1);
+                gen(n);
+                argnum++;
+                printf("#   } gen arg id %d\n", argnum + 1);
+            }
+            for (int i = argnum - 1; i >= 0; i--) {
+                printf("#   push arg id %d {\n", i + 1);
+                printf("  pop %s\n", argreg[i]);
+                printf("#   } push arg id %d\n", i + 1);
+            }
+
+            printf("#   } args %s\n", node->symbolname);
             printf("  mov rax, 0\n");
             printf("  call %s\n", node->symbolname);
             printf("  push rax\n");
-            printf("# } local func %s\n", node->symbolname);
+            printf("# } func %s\n", node->symbolname);
             return;
         case ND_ASSIGN:
             printf("# assign {\n");

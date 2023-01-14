@@ -8,7 +8,7 @@
 #include "9cc.h"
 
 // ローカル変数
-LVar *locals;
+static LVar *locals;
 
 // エラー箇所を報告する
 void error_at(const char *loc, const char *fmt, ...) {
@@ -135,7 +135,7 @@ Token *tokenize(char *p) {
             continue;
         }
 
-        if (strchr("+-*/()<>;={}", *p)) {
+        if (strchr("+-*/()<>;={},", *p)) {
             cur = new_token(TK_RESERVED, cur, p++, 1);
             continue;
         }
@@ -359,7 +359,7 @@ Node *unary(void) {
 }
 
 // primary = num
-//         | ident ("(" ")")?
+//         | ident ("(" expr? ","? ")")?
 //         | "(" expr ")"
 Node *primary(void) {
     if (consume("(")) {
@@ -372,10 +372,18 @@ Node *primary(void) {
     if (tok) {
         Node *node = calloc(1, sizeof(Node));
 
-        if (peek("(")) {
-            expect("(");
+        if (consume("(")) {
+            Node head = {};
+            Node *cur = &head;
+            while (!peek(")")) {
+                cur = cur->next = expr();
+                if (!consume(",")) {
+                    break;
+                }
+            }
             expect(")");
             node->kind = ND_FUNCALL;
+            node->args = head.next;
         } else {
             node->kind = ND_LVAR;
             LVar *lvar = find_lvar(tok);
