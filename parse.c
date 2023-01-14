@@ -8,12 +8,12 @@
 #include "9cc.h"
 
 // 現在着目しているトークン
-static Token *token;
+static Token *s_token;
 
 // 入力プログラム
-static char *user_input;
+static char *s_user_input;
 
-void set_user_input(char *input) { user_input = input; }
+void set_user_input(char *input) { s_user_input = input; }
 
 // ローカル変数
 static LVar *locals;
@@ -23,8 +23,8 @@ void error_at(const char *loc, const char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
 
-    int pos = loc - user_input;
-    fprintf(stderr, "%s\n", user_input);
+    int pos = loc - s_user_input;
+    fprintf(stderr, "%s\n", s_user_input);
     fprintf(stderr, "%*s", pos, "");  // pos個の空白を出力
     fprintf(stderr, "^ ");
     vfprintf(stderr, fmt, ap);
@@ -33,7 +33,7 @@ void error_at(const char *loc, const char *fmt, ...) {
 }
 
 bool peek(const char *op) {
-    if (token->kind != TK_RESERVED || strlen(op) != (size_t)token->len || memcmp(token->str, op, token->len)) {
+    if (s_token->kind != TK_RESERVED || strlen(op) != (size_t)s_token->len || memcmp(s_token->str, op, s_token->len)) {
         return false;
     }
     return true;
@@ -43,51 +43,51 @@ bool peek(const char *op) {
 // 真を返す。それ以外の場合には偽を返す。
 bool consume(const char *op) {
     if (peek(op)) {
-        token = token->next;
+        s_token = s_token->next;
         return true;
     }
     return false;
 }
 
 bool consume_kind(const TokenKind kind) {
-    if (token->kind != kind) {
+    if (s_token->kind != kind) {
         return false;
     }
-    token = token->next;
+    s_token = s_token->next;
     return true;
 }
 
 Token *consume_ident() {
-    if (token->kind != TK_IDENT) {
+    if (s_token->kind != TK_IDENT) {
         return NULL;
     }
-    Token *token_old = token;
-    token = token->next;
+    Token *token_old = s_token;
+    s_token = s_token->next;
     return token_old;
 }
 
 // 次のトークンが期待している記号のときには、トークンを1つ読み進める。
 // それ以外の場合にはエラーを報告する。
 void expect(const char *op) {
-    if (token->kind != TK_RESERVED || strlen(op) != (size_t)token->len || memcmp(token->str, op, token->len)) {
-        error_at(token->str, "'%s'ではありません", op);
+    if (s_token->kind != TK_RESERVED || strlen(op) != (size_t)s_token->len || memcmp(s_token->str, op, s_token->len)) {
+        error_at(s_token->str, "'%s'ではありません", op);
     }
-    token = token->next;
+    s_token = s_token->next;
 }
 
 // 次のトークンが数値の場合、トークンを1つ読み進めてその数値を返す。
 // それ以外の場合にはエラーを報告する。
 int32_t expect_number() {
-    if (token->kind != TK_NUM) {
-        error_at(token->str, "数ではありません");
+    if (s_token->kind != TK_NUM) {
+        error_at(s_token->str, "数ではありません");
     }
 
-    int32_t val = token->val;
-    token = token->next;
+    int32_t val = s_token->val;
+    s_token = s_token->next;
     return val;
 }
 
-bool at_eof() { return token->kind == TK_EOF; }
+bool at_eof() { return s_token->kind == TK_EOF; }
 
 // 新しいトークンを作成してcurに繋げる
 Token *new_token(const TokenKind kind, Token *cur, char *str, const int32_t len) {
@@ -419,6 +419,6 @@ int32_t get_stacksize(void) {
 }
 
 void parse(Token *token_in, Node **code) {
-    token = token_in;
+    s_token = token_in;
     program(code);
 }

@@ -15,7 +15,8 @@
         "functional": "c",
         "iosfwd": "c",
         "system_error": "c",
-        "cstdlib": "c"
+        "cstdlib": "c",
+        "memory_resource": "c"
     },
     "cmake.debugConfig": {
         "args": [
