@@ -4,7 +4,10 @@
         "stdio.h": "c",
         "ctype.h": "c",
         "stdbool.h": "c",
-        "9cc.h": "c"
+        "9cc.h": "c",
+        "string.h": "c",
+        "stdlib.h": "c",
+        "stdarg.h": "c"
     },
     "cmake.debugConfig": {
         "args": [

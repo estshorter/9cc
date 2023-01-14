@@ -358,7 +358,9 @@ Node *unary(void) {
     return primary();
 }
 
-// primary = "(" expr ")" | num
+// primary = num
+//         | ident ("(" ")")?
+//         | "(" expr ")"
 Node *primary(void) {
     if (consume("(")) {
         Node *node = expr();
@@ -369,18 +371,26 @@ Node *primary(void) {
     Token *tok = consume_ident();
     if (tok) {
         Node *node = calloc(1, sizeof(Node));
-        node->kind = ND_LVAR;
 
-        LVar *lvar = find_lvar(tok);
-        if (!lvar) {
-            lvar = calloc(1, sizeof(LVar));
-            lvar->next = locals;
-            lvar->name = tok->str;
-            lvar->len = tok->len;
-            lvar->offset = locals ? locals->offset + 8 : 8;
-            locals = lvar;
+        if (peek("(")) {
+            expect("(");
+            expect(")");
+            node->kind = ND_FUNCALL;
+        } else {
+            node->kind = ND_LVAR;
+            LVar *lvar = find_lvar(tok);
+            if (!lvar) {
+                lvar = calloc(1, sizeof(LVar));
+                lvar->next = locals;
+                lvar->name = tok->str;
+                lvar->len = tok->len;
+                lvar->offset = locals ? locals->offset + 8 : 8;
+                locals = lvar;
+            }
+            node->offset = lvar->offset;
         }
-        node->offset = lvar->offset;
+        node->symbolname = strndup(tok->str, tok->len);
+
         return node;
     }
 

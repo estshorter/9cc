@@ -25,17 +25,18 @@ struct Token {
 };
 
 typedef enum {
-    ND_ADD,     // +
-    ND_SUB,     // -
-    ND_MUL,     // *
-    ND_DIV,     // /
-    ND_EQ,      // ==
-    ND_NE,      // !=
-    ND_LT,      // <
-    ND_LE,      // <=
-    ND_NUM,     // 整数
-    ND_ASSIGN,  // =
-    ND_LVAR,    // ローカル変数
+    ND_ADD,      // +
+    ND_SUB,      // -
+    ND_MUL,      // *
+    ND_DIV,      // /
+    ND_EQ,       // ==
+    ND_NE,       // !=
+    ND_LT,       // <
+    ND_LE,       // <=
+    ND_NUM,      // 整数
+    ND_ASSIGN,   // =
+    ND_LVAR,     // ローカル変数
+    ND_FUNCALL,  // 巻数
     ND_RETURN,
     ND_IF,
     ND_ELSE,
@@ -65,6 +66,8 @@ struct Node {
     // Block
     Node *body;
     Node *next;
+
+    char *symbolname;
 };
 
 Token *tokenize(char *p);

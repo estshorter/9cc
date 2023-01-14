@@ -46,12 +46,19 @@ void gen(const Node *node) {
             printf("  push %d\n", node->val);
             return;
         case ND_LVAR:
-            printf("# local var {\n");
+            printf("# local var %s {\n", node->symbolname);
             gen_lval(node);
             printf("  pop rax\n");
             printf("  mov rax, [rax]\n");
             printf("  push rax\n");
-            printf("# } local var\n");
+            printf("# } local var %s\n", node->symbolname);
+            return;
+        case ND_FUNCALL:
+            printf("# local func %s {\n", node->symbolname);
+            printf("  mov rax, 0\n");
+            printf("  call %s\n", node->symbolname);
+            printf("  push rax\n");
+            printf("# } local func %s\n", node->symbolname);
             return;
         case ND_ASSIGN:
             printf("# assign {\n");
@@ -68,9 +75,7 @@ void gen(const Node *node) {
             printf("# return {\n");
             gen(node->lhs);
             printf("  pop rax\n");
-            printf("  mov rsp, rbp\n");
-            printf("  pop rbp\n");
-            printf("  ret\n");
+            printf("  jmp .L.return\n");
             printf("# } return\n");
             return;
         case ND_IF: {
@@ -141,7 +146,8 @@ void gen(const Node *node) {
             printf("# block {\n");
             for (Node *n = node->body; n; n = n->next) {
                 gen(n);
-                if (n->kind != ND_WHILE && n->kind != ND_FOR && n->kind != ND_IF && n->kind != ND_BLOCK) {
+                if (n->kind != ND_WHILE && n->kind != ND_FOR && n->kind != ND_IF && n->kind != ND_BLOCK &&
+                    n->kind != ND_FUNCALL) {
                     printf("  pop rax # pop unnecessary item\n");
                 }
             }
