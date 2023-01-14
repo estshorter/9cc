@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 project(9cc)
 
-add_executable(9cc main.c parse.c codegen.c 9cc.h)
+add_executable(9cc main.c parse.c codegen.c type.c 9cc.h)
 
 target_compile_options(9cc PRIVATE
     $<$<CXX_COMPILER_ID:GNU>:-Wall -Wextra>

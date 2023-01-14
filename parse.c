@@ -87,14 +87,15 @@ int32_t expect_number() {
     return val;
 }
 
-char *get_ident_name() {
-    Token *maybe_ident = s_token;
-    Token *t = consume_ident();
-    if (t) {
-        return strndup(maybe_ident->str, maybe_ident->len);
-    }
-    return NULL;
-}
+// char *get_ident_token() {
+//     Token *maybe_ident = s_token;
+//     Token *t = consume_ident();
+//     if (t) {
+//         return s_token;
+//         // return strndup(maybe_ident->str, maybe_ident->len);
+//     }
+//     return NULL;
+// }
 
 bool at_eof() { return s_token->kind == TK_EOF; }
 
@@ -187,7 +188,7 @@ Token *tokenize(char *p) {
 // 変数を名前で検索する。見つからなかった場合はNULLを返す。
 LVar *find_lvar(const Token *tok) {
     for (LVar *var = locals; var; var = var->next) {
-        if (var->len == tok->len && !strncmp(tok->str, var->name, var->len)) {
+        if (strlen(var->name) == (size_t)tok->len && !strncmp(tok->str, var->name, tok->len)) {
             return var;
         }
     }
@@ -215,8 +216,8 @@ Node *new_num(const int32_t val) {
 
 Function *program(void);
 Function *function(void);
-char *declarator(void);
-void type_suffix(void);
+Type *declarator(void);
+Type *type_suffix(void);
 Node *compound_stmt(void);
 Node *stmt(void);
 Node *expr(void);
@@ -238,11 +239,43 @@ Function *program() {
     return head.next;
 }
 
+static char *get_ident(Token *tok) {
+    if (tok->kind != TK_IDENT) {
+        error_at(tok->str, "識別子ではありません");
+    }
+    return strndup(tok->str, tok->len);
+}
+
+static LVar *new_lvar(char *name, Type *ty) {
+    LVar *var = calloc(1, sizeof(LVar));
+    var->name = name;
+    var->ty = ty;
+    var->next = locals;
+    var->offset = locals ? locals->offset + 8 : 8;
+    locals = var;
+    return var;
+}
+
+static void create_param_lvars(Type *param) {
+    if (!param) {
+        return;
+    }
+
+    create_param_lvars(param->next);
+    new_lvar(get_ident(param->name), param);
+}
+
 // functon-definition = declarator "{" compound-stmt
 Function *function(void) {
+    Type *ty = declarator();
+
     locals = NULL;
+
     Function *fn = calloc(1, sizeof(Function));
-    fn->name = declarator();
+    fn->name = get_ident(ty->name);
+    create_param_lvars(ty->params);
+    fn->params = locals;
+
     expect("{");
     fn->body = compound_stmt();
     fn->locals = locals;
@@ -251,19 +284,39 @@ Function *function(void) {
 }
 
 // declarator = ident type-suffix
-char *declarator() {
-    char *ident = get_ident_name();
-    if (!ident) {
+Type *declarator() {
+    Token *maybe_ident = consume_ident();
+    if (!maybe_ident) {
         error_at(s_token->str, "識別子ではありません");
     }
-    type_suffix();
-    return ident;
+    Type *type = type_suffix();
+    type->name = maybe_ident;
+    return type;
 }
 
-// type-suffix = ("(" func-params)? ")"
-void type_suffix() {
+// type-suffix = ("(" func-params? ")")?
+// func-params = param ("," param)*
+// param       = declspec declarator
+Type *type_suffix() {
     expect("(");
+    Type head = {};
+    Type *cur = &head;
+    while (!peek(")") && cur) {
+        Token *tok = consume_ident();
+        Type *ty = copy_type(ty_int);
+        ty->name = tok;
+        cur = cur->next = ty;
+        // copy_typeがついている理由がよくわからないので外す
+        // cur = cur->next = copy_type(ty);
+
+        if (!consume(",")) {
+            break;
+        }
+    }
     expect(")");
+    Type *ty = func_type(NULL);
+    ty->params = head.next;
+    return ty;
 }
 
 // compound-stmt = stmt* "}"
@@ -440,32 +493,23 @@ Node *primary(void) {
             expect(")");
             node->kind = ND_FUNCALL;
             node->args = head.next;
+            node->symbolname = strndup(tok->str, tok->len);
         } else {
             node->kind = ND_LVAR;
             LVar *lvar = find_lvar(tok);
+            node->symbolname = strndup(tok->str, tok->len);
+            Type *ty = ty_int;
+            ty->name = s_token;
             if (!lvar) {
-                lvar = calloc(1, sizeof(LVar));
-                lvar->next = locals;
-                lvar->name = tok->str;
-                lvar->len = tok->len;
-                lvar->offset = locals ? locals->offset + 8 : 8;
-                locals = lvar;
+                lvar = new_lvar(node->symbolname, ty);
             }
             node->offset = lvar->offset;
         }
-        node->symbolname = strndup(tok->str, tok->len);
 
         return node;
     }
 
     return new_num(expect_number());
-}
-
-int32_t get_stacksize(void) {
-    if (!locals) {
-        return 0;
-    }
-    return locals->offset;
 }
 
 Function *parse(Token *token_in) {

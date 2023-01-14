@@ -1,5 +1,5 @@
 cc = gcc
-     cflags = -std=gnu17 -g -Wall -Wextra
+cflags = -std=gnu17 -g -Wall -Wextra
 lflags = -static
 rule build
      depfile = $out.d
@@ -8,6 +8,7 @@ rule build
 rule link
      command = $cc $cflags $lflags -o $out $in
 
+build type.o: build type.c
 build codegen.o: build codegen.c
 build parse.o: build parse.c
 build main.o: build main.c

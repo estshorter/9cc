@@ -260,6 +260,11 @@ void generate_code(Function *fns) {
         printf("  sub rsp, %ld # num_lvar: %ld\n", fn->stack_size, fn->stack_size / 8);
         printf("# } prologue\n");
 
+        int i = 0;
+        for (LVar *lvar = fn->params; lvar; lvar = lvar->next) {
+            printf("  mov [rbp-%d], %s\n", lvar->offset, argreg[i++]);
+        }
+
         s_current_fn = fn;
         for (Node *n = fn->body; n; n = n->next) {
             gen(n);

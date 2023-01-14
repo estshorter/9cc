@@ -21,7 +21,7 @@
     },
     "cmake.debugConfig": {
         "args": [
-            "main() { a=3; return a; }"
+            "main() { return sub2(4,3); } sub2(x, y) { return x-y; }"
         ],
     }
 }
