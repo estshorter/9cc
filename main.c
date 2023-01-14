@@ -10,9 +10,10 @@ int main(int argc, char **argv) {
     }
 
     // トークナイズする
-    user_input = argv[1];
-    token = tokenize(user_input);
-    program();
+    set_user_input(argv[1]);
+    Token *token = tokenize(argv[1]);
+    Node *code[100];
+    parse(token, code);
 
     // アセンブリの前半部分を出力
     printf(".intel_syntax noprefix\n");
@@ -27,9 +28,7 @@ int main(int argc, char **argv) {
     printf("# } prologue\n");
 
     // 先頭の式から順にコード生成
-    for (int i = 0; code[i]; i++) {
-        gen(code[i]);
-    }
+    generate_code((const Node **)code);
 
     // エピローグ
     // 最後の式の結果がRAXに残っているのでそれが返り値になる

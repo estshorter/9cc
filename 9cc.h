@@ -72,8 +72,8 @@ struct Node {
 };
 
 Token *tokenize(char *p);
-void program(void);
-void gen(const Node *node);
+void parse(Token *token_in, Node **code);
+void generate_code(const Node **code);
 
 typedef struct LVar LVar;
 
@@ -85,13 +85,17 @@ struct LVar {
     int32_t offset;  // RBPからのオフセット
 };
 
+// 関数
+typedef struct Function Function;
+struct Function {
+    Function *next;
+    char *name;
+    Node *body;
+    LVar *locals;
+    int64_t stack_size;
+};
+
 int32_t get_stacksize(void);
+void set_user_input(char *input);
 
-// 現在着目しているトークン
-extern Token *token;
-
-extern Node *code[100];
-
-// 入力プログラム
-extern char *user_input;
 #endif

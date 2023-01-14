@@ -7,7 +7,15 @@
         "9cc.h": "c",
         "string.h": "c",
         "stdlib.h": "c",
-        "stdarg.h": "c"
+        "stdarg.h": "c",
+        "*.tcc": "c",
+        "vector": "c",
+        "exception": "c",
+        "string_view": "c",
+        "functional": "c",
+        "iosfwd": "c",
+        "system_error": "c",
+        "cstdlib": "c"
     },
     "cmake.debugConfig": {
         "args": [

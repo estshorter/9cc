@@ -7,6 +7,14 @@
 
 #include "9cc.h"
 
+// 現在着目しているトークン
+static Token *token;
+
+// 入力プログラム
+static char *user_input;
+
+void set_user_input(char *input) { user_input = input; }
+
 // ローカル変数
 static LVar *locals;
 
@@ -196,7 +204,7 @@ Node *new_num(const int32_t val) {
     return node;
 }
 
-void program(void);
+void program(Node **code);
 Node *stmt(void);
 Node *expr(void);
 Node *assign(void);
@@ -207,9 +215,7 @@ Node *mul(void);
 Node *unary(void);
 Node *primary(void);
 
-Node *code[100];
-
-void program(void) {
+void program(Node **code) {
     int i = 0;
     while (!at_eof()) {
         code[i++] = stmt();
@@ -410,4 +416,9 @@ int32_t get_stacksize(void) {
         return 0;
     }
     return locals->offset;
+}
+
+void parse(Token *token_in, Node **code) {
+    token = token_in;
+    program(code);
 }

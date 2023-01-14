@@ -5,12 +5,6 @@
 
 #include "9cc.h"
 
-// 現在着目しているトークン
-Token *token;
-
-// 入力プログラム
-char *user_input;
-
 static char *argreg[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
 int count(void) {
@@ -228,4 +222,10 @@ void gen(const Node *node) {
     }
 
     printf("  push rax\n");
+}
+
+void generate_code(const Node **code) {
+    for (int i = 0; code[i]; i++) {
+        gen(code[i]);
+    }
 }
