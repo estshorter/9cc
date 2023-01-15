@@ -35,15 +35,25 @@ void error(const char *fmt, ...) {
     fprintf(stderr, "\n");
     exit(1);
 }
+void gen(const Node *node);
 
-void gen_lval(const Node *node) {
-    if (node->kind != ND_LVAR) {
-        error("代入の左辺値が変数ではありません");
+void gen_lval_addr(const Node *node) {
+    if (node->kind != ND_LVAR && node->kind != ND_DEREF) {
     }
-    printf("# left val %s{\n", node->symbolname);
-    printf("  mov rax, rbp\n");
-    printf("  sub rax, %" PRId32 "\n", node->offset);
-    printf("# } left val %s\n", node->symbolname);
+    char *debug_name = node->symbolname ? node->symbolname : "deref";
+    printf("# left val %s{\n", debug_name);
+    switch (node->kind) {
+        case ND_LVAR:
+            printf("  lea rax, [rbp-%d]\n", node->offset);
+            break;
+        case ND_DEREF:
+            gen(node->lhs);
+            break;
+        default:
+            error("代入の左辺値が変数でもDEREFでもありません: %d", node->kind);
+            break;
+    }
+    printf("# } left val %s\n", debug_name);
 }
 
 void gen(const Node *node) {
@@ -54,9 +64,20 @@ void gen(const Node *node) {
         case ND_NUM:
             printf("  mov rax, %d\n", node->val);
             return;
+        case ND_ADDR:
+            printf("# addr {\n");
+            gen_lval_addr(node->lhs);
+            printf("# } addr\n");
+            return;
+        case ND_DEREF:
+            printf("# deref {\n");
+            gen(node->lhs);
+            printf("  mov rax, [rax]\n");
+            printf("# } deref\n");
+            return;
         case ND_LVAR:
             printf("# local var %s {\n", node->symbolname);
-            gen_lval(node);
+            gen_lval_addr(node);
             printf("  mov rax, [rax]\n");
             printf("# } local var %s\n", node->symbolname);
             return;
@@ -84,7 +105,7 @@ void gen(const Node *node) {
             return;
         case ND_ASSIGN:
             printf("# assign {\n");
-            gen_lval(node->lhs);
+            gen_lval_addr(node->lhs);
             push();
             gen(node->rhs);
             pop("rdi");
@@ -253,11 +274,13 @@ void generate_code(Function *fns) {
         printf(".global %s\n", fn->name);
         printf("%s:\n", fn->name);
 
+        int num_locals = fn->locals ? fn->locals->offset / 8 : 0;
+
         // プロローグ
         printf("# prologue {\n");
         printf("  push rbp\n");
         printf("  mov rbp, rsp\n");
-        printf("  sub rsp, %ld # num_lvar: %ld\n", fn->stack_size, fn->stack_size / 8);
+        printf("  sub rsp, %ld # num_lvar: %d\n", fn->stack_size, num_locals);
         printf("# } prologue\n");
 
         int i = 0;

@@ -13,4 +13,4 @@ build codegen.o: build codegen.c
 build parse.o: build parse.c
 build main.o: build main.c
 
-build 9cc: link main.o codegen.o parse.o
+build 9cc: link main.o codegen.o parse.o type.o
